@@ -1,192 +1,194 @@
 import { useState, useEffect } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import {
-  App as F7App,
-  View,
-  Page,
-  Navbar,
-  Block,
-  Icon,
-  Link,
-  Toolbar,
-  Preloader,
-} from "framework7-react";
+import { HashRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { loadData, formatSGD } from "./lib/data";
 
-const f7params = {
-  name: "Foodpanda Tracker",
-  theme: "auto",
-  iosTranslucent: true,
-  iosSwipeBack: true,
-  touch: { tapHold: true, fastClicks: true },
-};
+// ─── Logo component ────────────────────────────────────────────────────
 
-// ─── Motion variants ──────────────────────────────────────────────────
+function Logo() {
+  return (
+    <div className="fp-header">
+      <div className="fp-header-top">
+        <h1 className="fp-title">🍔 Foodpanda</h1>
+        <span className="fp-badge">Tracker</span>
+      </div>
+      <p className="fp-sub">Your delivery history at a glance</p>
+    </div>
+  );
+}
 
-const pageEnter = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] },
-};
-
-const staggerItem = (i) => ({
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  transition: { delay: i * 0.04, duration: 0.35, ease: "easeOut" },
-});
-
-// ─── Stat card ────────────────────────────────────────────────────────
+// ─── Stat card ─────────────────────────────────────────────────────────
 
 function StatCard({ label, value, color, delay }) {
   return (
-    <motion.div className="sc" {...staggerItem(delay)}>
-      <div className="sc-l">{label}</div>
-      <div className="sc-v" style={{ color: color || "#111" }}>{value}</div>
+    <motion.div
+      className="stat-card"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: delay * 0.06, duration: 0.35 }}
+    >
+      <div className="stat-card-label">{label}</div>
+      <div className="stat-card-value" style={{ color: color || "#007aff" }}>{value}</div>
     </motion.div>
   );
 }
 
-// ─── Year section ─────────────────────────────────────────────────────
+// ─── Year card with stores ─────────────────────────────────────────────
 
-function YearSection({ year, data }) {
+function YearCard({ year, data, defaultOpen }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [expandedStore, setExpandedStore] = useState(null);
-  const totalPaid = data.totalPaid || 0;
-  const foodCost = data.foodCost || 0;
-  const netDelivery = data.netDelivery || 0;
-  const platFee = data.platFee || 0;
-  const hasData = totalPaid > 0 || foodCost > 0;
+  const hasData = (data.totalPaid || data.foodCost) > 0;
 
   return (
-    <div className="yc">
-      <div className="yh">
-        <span className="yl">{year}</span>
-        <span className="yb">{data.count} order{data.count !== 1 ? "s" : ""}</span>
+    <div className={`year-card ${open ? "open" : ""}`}>
+      <div className="year-card-summary" onClick={() => setOpen(!open)}>
+        <div className="year-card-left">
+          <span className="year-card-year">{year}</span>
+          <span className="year-card-count">{data.count} order{data.count !== 1 ? "s" : ""}</span>
+        </div>
+        <span className="year-card-arrow">{open ? "▲" : "▼"}</span>
       </div>
 
-      {hasData ? (
-        <>
-          <div className="sg">
-            <StatCard label="Total Paid" value={formatSGD(totalPaid)} color="#007aff" delay={0} />
-            <StatCard label="Food Cost" value={formatSGD(foodCost)} color="#8B5CF6" delay={1} />
-            <StatCard label="Delivery" value={formatSGD(netDelivery)} color="#34C759" delay={2} />
-            <StatCard label="Fees" value={formatSGD(platFee)} color="#FF9500" delay={3} />
-          </div>
-
-          {data.stores.filter(s => s.name !== "Unknown").slice(0, 10).length > 0 && (
-            <>
-              <div className="sl">Top Stores</div>
-              {data.stores.filter(s => s.name !== "Unknown").slice(0, 10).map((store, si) => (
-                <div key={store.name} className="scard" onClick={() => setExpandedStore(expandedStore === si ? null : si)}>
-                  <div className="sh">
-                    <span className="sr">#{si + 1}</span>
-                    <span className="sn">{store.name}</span>
-                    <span className="sco">{store.count}</span>
-                    <span className="sa">{expandedStore === si ? "▲" : "▼"}</span>
-                  </div>
-                  {expandedStore === si && (
-                    <div className="sd">
-                      <div className="ssr"><span>Total Paid</span><span className="green">{formatSGD(store.totalPaid)}</span></div>
-                      <div className="ssr"><span>Orders</span><span>{store.count}</span></div>
-                      {store.items?.length > 0 && (
-                        <>
-                          <div className="il">Top Items</div>
-                          {store.items.map((item, ii) => (
-                            <div key={ii} className="ir"><span>{item.name}</span><span className="iq">{item.qty}</span></div>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="year-card-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            {hasData ? (
+              <>
+                <div className="year-card-stats">
+                  <StatCard label="Total Paid" value={formatSGD(data.totalPaid)} color="#007aff" delay={0} />
+                  <StatCard label="Food Cost" value={formatSGD(data.foodCost)} color="#8B5CF6" delay={1} />
+                  <StatCard label="Delivery" value={formatSGD(data.netDelivery)} color="#34C759" delay={2} />
+                  <StatCard label="Fees" value={formatSGD(data.platFee)} color="#FF9500" delay={3} />
                 </div>
-              ))}
-            </>
-          )}
-        </>
-      ) : (
-        <div className="en">Order data recorded, but no financial details extracted for this period.</div>
-      )}
+
+                <div className="year-card-stores">
+                  <div className="stores-header">Top Stores</div>
+                  {data.stores.filter(s => s.name !== "Unknown").slice(0, 10).map((store, si) => (
+                    <div key={store.name} className={`store-row ${expandedStore === si ? "expanded" : ""}`}>
+                      <div className="store-row-summary" onClick={() => setExpandedStore(expandedStore === si ? null : si)}>
+                        <span className="store-rank">#{si + 1}</span>
+                        <span className="store-name">{store.name}</span>
+                        <span className="store-order-count">{store.count}</span>
+                        <span className="store-arrow">{expandedStore === si ? "▲" : "▼"}</span>
+                      </div>
+
+                      <AnimatePresence>
+                        {expandedStore === si && (
+                          <motion.div
+                            className="store-detail"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <div className="store-detail-row">
+                              <span>Total Paid</span>
+                              <span className="green">{formatSGD(store.totalPaid)}</span>
+                            </div>
+                            <div className="store-items-header">Top Items</div>
+                            {store.items && store.items.length > 0 ? (
+                              store.items.map((item, ii) => (
+                                <div key={ii} className="store-item-row">
+                                  <span className="store-item-name">{item.name}</span>
+                                  <span className="store-item-qty">{item.qty}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="store-item-row no-items">No item data for this store</div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="year-card-empty">
+                Order data recorded, but no financial details extracted for this period.
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 // ─── Dashboard Page ────────────────────────────────────────────────────
 
-function DashboardPage({ data, loading }) {
-  const years = data ? Object.keys(data.years) : [];
-
+function Dashboard({ data, loading }) {
   if (loading) {
-    return <div className="ls"><div className="ldr"></div><p>Crunching your orders…</p></div>;
+    return (
+      <div className="page-wrap">
+        <Logo />
+        <div className="loading-state">
+          <div className="loader"></div>
+          <p>Loading your data…</p>
+        </div>
+      </div>
+    );
   }
+
   if (!data) {
-    return <div className="er"><p>Could not load data.</p></div>;
+    return (
+      <div className="page-wrap">
+        <Logo />
+        <div className="error-state">
+          <p>Could not load data.</p>
+        </div>
+      </div>
+    );
   }
+
+  const years = Object.keys(data.years);
 
   return (
-    <Page name="dashboard">
-      <Navbar title="Foodpanda" />
-      <div className="pc">
-        {/* All-time summary */}
-        <div className="atc">
-          <div className="ath"><span className="ati">🍔</span><span className="att">All Time</span></div>
-          <div className="atg">
-            <div className="ats"><span className="atv">{data.allTime.count}</span><span className="atl">Orders</span></div>
-            <div className="ats"><span className="atv">{formatSGD(data.allTime.totalPaid)}</span><span className="atl">Total Spent</span></div>
-            <div className="ats"><span className="atv">{formatSGD(data.allTime.foodCost)}</span><span className="atl">Food Cost</span></div>
-            <div className="ats"><span className="atv">{formatSGD(data.allTime.netDelivery)}</span><span className="atl">Delivery Fees</span></div>
+    <div className="page-wrap">
+      <Logo />
+
+      {/* All-time summary */}
+      <div className="alltime-card">
+        <div className="alltime-header">
+          <span className="alltime-icon">🍔</span>
+          <span className="alltime-title">All Time</span>
+        </div>
+        <div className="alltime-grid">
+          <div className="alltime-stat">
+            <span className="alltime-value">{formatSGD(data.allTime.totalPaid)}</span>
+            <span className="alltime-label">Total spent</span>
+          </div>
+          <div className="alltime-stat">
+            <span className="alltime-value">{data.allTime.count}</span>
+            <span className="alltime-label">Orders</span>
+          </div>
+          <div className="alltime-stat">
+            <span className="alltime-value">{formatSGD(data.allTime.foodCost)}</span>
+            <span className="alltime-label">Food cost</span>
+          </div>
+          <div className="alltime-stat">
+            <span className="alltime-value">{formatSGD(data.allTime.netDelivery)}</span>
+            <span className="alltime-label">Delivery fees</span>
           </div>
         </div>
-
-        {years.map((yr) => <YearSection key={yr} year={yr} data={data.years[yr]} />)}
-
-        <div className="pf">Data from your foodpanda receipts. Updated daily.</div>
       </div>
-    </Page>
-  );
-}
 
-// ─── Stores page ──────────────────────────────────────────────────────
+      {/* Year cards */}
+      {years.map((yr, i) => (
+        <YearCard key={yr} year={yr} data={data.years[yr]} defaultOpen={yr === "2026" || i === 0} />
+      ))}
 
-function StoresPage({ data, loading }) {
-  if (loading || !data) return null;
-
-  const allStores = {};
-  for (const yr of Object.values(data.years)) {
-    for (const s of yr.stores) {
-      if (s.name === "Unknown") continue;
-      if (!allStores[s.name]) allStores[s.name] = { name: s.name, count: 0, totalPaid: 0 };
-      allStores[s.name].count += s.count;
-      allStores[s.name].totalPaid += s.totalPaid;
-    }
-  }
-
-  const sorted = Object.values(allStores).sort((a, b) => b.count - a.count);
-  const [expandedStore, setExpandedStore] = useState(null);
-
-  return (
-    <Page name="stores">
-      <Navbar title="All Stores" />
-      <div className="pc">
-        <div className="stc">{sorted.length} stores ordered from</div>
-
-        {sorted.map((store, si) => (
-          <div key={store.name} className="scard" onClick={() => setExpandedStore(expandedStore === si ? null : si)}>
-            <div className="sh">
-              <span className="sr">#{si + 1}</span>
-              <span className="sn">{store.name}</span>
-              <span className="sco">{store.count}</span>
-              <span className="sa">{expandedStore === si ? "▲" : "▼"}</span>
-            </div>
-            {expandedStore === si && (
-              <div className="sd">
-                <div className="ssr"><span>Total Paid</span><span className="green">{formatSGD(store.totalPaid)}</span></div>
-                <div className="ssr"><span>Orders</span><span>{store.count}</span></div>
-              </div>
-            )}
-          </div>
-        ))}
+      <div className="page-footer">
+        Updated from your foodpanda receipts. Data refreshes daily.
       </div>
-    </Page>
+    </div>
   );
 }
 
@@ -195,32 +197,19 @@ function StoresPage({ data, loading }) {
 export default function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const location = useLocation();
 
   useEffect(() => {
-    loadData().then((d) => { setData(d); setLoading(false); });
+    loadData().then((d) => {
+      setData(d);
+      setLoading(false);
+    });
   }, []);
 
   return (
-    <F7App {...f7params}>
-      <View main iosDynamicNavbar={false}>
-        <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<DashboardPage data={data} loading={loading} />} />
-          <Route path="/stores" element={<StoresPage data={data} loading={loading} />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-
-        <Toolbar tabbar labels bottom>
-          <Link tabLink active routeTabId="dashboard" href="#/">
-            <Icon ios="f7:house_fill" md="material:home" />
-            <span className="tabbar-label">Dashboard</span>
-          </Link>
-          <Link tabLink routeTabId="stores" href="#/stores">
-            <Icon ios="f7:building_2_fill" md="material:store" />
-            <span className="tabbar-label">Stores</span>
-          </Link>
-        </Toolbar>
-      </View>
-    </F7App>
+    <HashRouter>
+      <div className="app-shell">
+        <Dashboard data={data} loading={loading} />
+      </div>
+    </HashRouter>
   );
 }
