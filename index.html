@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/foodpanda-tracker-app/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+
+    <!-- iOS standalone mode (fullscreen, no Safari chrome) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="foodpanda-tracker-app" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/foodpanda-tracker-app/manifest.webmanifest" />
+    <meta name="theme-color" content="#000000" />
+
+    <!-- iOS splash screen (optional — add your own) -->
+    <!--
+    <link rel="apple-touch-startup-image" href="/foodpanda-tracker-app/splash.png" />
+    <link rel="apple-touch-icon" href="/foodpanda-tracker-app/pwa-192x192.png" />
+    -->
+
+    <!-- Disable pull-to-refresh and overscroll on iOS -->
+    <style>
+      html, body {
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: touch;
+      }
+    </style>
+
+    <title>foodpanda-tracker-app</title>
+    <script type="module" crossorigin src="/foodpanda-tracker-app/assets/index-CLTS2-Af.js"></script>
+    <link rel="stylesheet" crossorigin href="/foodpanda-tracker-app/assets/index-CnePwI9Z.css">
+  <link rel="manifest" href="/foodpanda-tracker-app/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/foodpanda-tracker-app/registerSW.js"></script></head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/foodpanda-tracker-app/sw.js', { scope: '/foodpanda-tracker-app/' })})}
