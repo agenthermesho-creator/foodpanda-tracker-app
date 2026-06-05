@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import {
   App as F7App,
@@ -6,8 +6,6 @@ import {
   Page,
   Navbar,
   Block,
-  List,
-  ListItem,
   Icon,
   Link,
   Toolbar,
@@ -38,278 +36,161 @@ const staggerItem = (i) => ({
   transition: { delay: i * 0.04, duration: 0.35, ease: "easeOut" },
 });
 
-const cardHover = { whileHover: { scale: 1.02 }, whileTap: { scale: 0.98 } };
-
-// ─── Stat card component ────────────────────────────────────────────────
+// ─── Stat card ────────────────────────────────────────────────────────
 
 function StatCard({ label, value, color, delay }) {
   return (
-    <motion.div
-      className="stat-card"
-      {...staggerItem(delay)}
-    >
-      <div className="stat-label">{label}</div>
-      <div className="stat-value" style={{ color: color || "var(--f7-text-color)" }}>
-        {value}
-      </div>
+    <motion.div className="sc" {...staggerItem(delay)}>
+      <div className="sc-l">{label}</div>
+      <div className="sc-v" style={{ color: color || "#111" }}>{value}</div>
     </motion.div>
   );
 }
 
-// ─── Year card with store accordion ─────────────────────────────────────
+// ─── Year section ─────────────────────────────────────────────────────
 
-function YearSection({ year, data, isOpen }) {
+function YearSection({ year, data }) {
   const [expandedStore, setExpandedStore] = useState(null);
-  const hasData = data.totalPaid > 0 || data.foodCost > 0;
+  const totalPaid = data.totalPaid || 0;
+  const foodCost = data.foodCost || 0;
+  const netDelivery = data.netDelivery || 0;
+  const platFee = data.platFee || 0;
+  const hasData = totalPaid > 0 || foodCost > 0;
 
   return (
-    <motion.div
-      className="year-card"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-    >
-      {/* Year header */}
-      <div className="year-header">
-        <div className="year-header-left">
-          <span className="year-label">{year}</span>
-          <span className="year-badge">{data.count} order{data.count !== 1 ? "s" : ""}</span>
-        </div>
+    <div className="yc">
+      <div className="yh">
+        <span className="yl">{year}</span>
+        <span className="yb">{data.count} order{data.count !== 1 ? "s" : ""}</span>
       </div>
 
-      {!hasData ? (
-        <div className="year-content">
-          <p className="empty-note">Order data recorded, but no financial details extracted for this period.</p>
-          {data.stores.length > 0 && (
-            <>
-              <div className="stores-label">Stores</div>
-              {data.stores.map((store, si) => (
-                <motion.div key={store.name} {...staggerItem(si)}>
-                  <div className="store-header" style={{ padding: "10px 14px", background: "var(--bg-subtle)", borderRadius: 12, marginBottom: 4 }}>
-                    <span className="store-rank">#{si + 1}</span>
-                    <span className="store-name">{store.name === "Unknown" ? "Unrecorded" : store.name}</span>
-                    <span className="store-count">{store.count}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </>
-          )}
-        </div>
-      ) : (
-        <div className="year-content">
-          <div className="summary-grid">
-            <StatCard label="Total Paid" value={formatSGD(data.totalPaid)} color="#007aff" delay={0} />
-            <StatCard label="Food Cost" value={formatSGD(data.foodCost)} color="#8B5CF6" delay={1} />
-            <StatCard label="Delivery (net)" value={formatSGD(data.netDelivery)} color="#34C759" delay={2} />
-            <StatCard label="Platform Fees" value={formatSGD(data.platFee)} color="#FF9500" delay={3} />
+      {hasData ? (
+        <>
+          <div className="sg">
+            <StatCard label="Total Paid" value={formatSGD(totalPaid)} color="#007aff" delay={0} />
+            <StatCard label="Food Cost" value={formatSGD(foodCost)} color="#8B5CF6" delay={1} />
+            <StatCard label="Delivery" value={formatSGD(netDelivery)} color="#34C759" delay={2} />
+            <StatCard label="Fees" value={formatSGD(platFee)} color="#FF9500" delay={3} />
           </div>
 
-          {data.stores.length > 0 && (
+          {data.stores.filter(s => s.name !== "Unknown").slice(0, 10).length > 0 && (
             <>
-              <div className="stores-label">Top Stores</div>
+              <div className="sl">Top Stores</div>
               {data.stores.filter(s => s.name !== "Unknown").slice(0, 10).map((store, si) => (
-                <motion.div key={store.name} {...staggerItem(si + 4)}>
-                  <div
-                    className={`store-card ${expandedStore === si ? "expanded" : ""}`}
-                    onClick={() => setExpandedStore(expandedStore === si ? null : si)}
-                  >
-                    <div className="store-header">
-                      <span className="store-rank">#{si + 1}</span>
-                      <span className="store-name">{store.name}</span>
-                      <span className="store-count">{store.count}</span>
-                      <span className="store-arrow">{expandedStore === si ? "▲" : "▼"}</span>
-                    </div>
-
-                    <AnimatePresence>
-                      {expandedStore === si && (
-                        <motion.div
-                          className="store-detail"
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25 }}
-                        >
-                          <div className="store-summary-row">
-                            <span>Total Paid</span>
-                            <span className="value green">{formatSGD(store.totalPaid)}</span>
-                          </div>
-                          <div className="store-summary-row">
-                            <span>Orders</span>
-                            <span className="value">{store.count}</span>
-                          </div>
-
-                          {store.items && store.items.length > 0 && (
-                            <>
-                              <div className="items-label">Top Items</div>
-                              {store.items.map((item, ii) => (
-                                <div key={ii} className="item-row">
-                                  <span className="item-name">{item.name}</span>
-                                  <span className="item-qty">{item.qty}</span>
-                                </div>
-                              ))}
-                            </>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                <div key={store.name} className="scard" onClick={() => setExpandedStore(expandedStore === si ? null : si)}>
+                  <div className="sh">
+                    <span className="sr">#{si + 1}</span>
+                    <span className="sn">{store.name}</span>
+                    <span className="sco">{store.count}</span>
+                    <span className="sa">{expandedStore === si ? "▲" : "▼"}</span>
                   </div>
-                </motion.div>
+                  {expandedStore === si && (
+                    <div className="sd">
+                      <div className="ssr"><span>Total Paid</span><span className="green">{formatSGD(store.totalPaid)}</span></div>
+                      <div className="ssr"><span>Orders</span><span>{store.count}</span></div>
+                      {store.items?.length > 0 && (
+                        <>
+                          <div className="il">Top Items</div>
+                          {store.items.map((item, ii) => (
+                            <div key={ii} className="ir"><span>{item.name}</span><span className="iq">{item.qty}</span></div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
             </>
           )}
-        </div>
+        </>
+      ) : (
+        <div className="en">Order data recorded, but no financial details extracted for this period.</div>
       )}
-    </motion.div>
+    </div>
   );
 }
 
-// ─── Dashboard Page ─────────────────────────────────────────────────────
+// ─── Dashboard Page ────────────────────────────────────────────────────
 
 function DashboardPage({ data, loading }) {
   const years = data ? Object.keys(data.years) : [];
 
+  if (loading) {
+    return <div className="ls"><div className="ldr"></div><p>Crunching your orders…</p></div>;
+  }
+  if (!data) {
+    return <div className="er"><p>Could not load data.</p></div>;
+  }
+
   return (
     <Page name="dashboard">
       <Navbar title="Foodpanda" />
-
-      {loading ? (
-        <Block className="loading-block">
-          <Preloader />
-          <p className="loading-text">Crunching your orders…</p>
-        </Block>
-      ) : !data ? (
-        <Block className="error-block">
-          <p>Could not load data.</p>
-        </Block>
-      ) : (
-        <motion.div className="page-content" {...pageEnter}>
-          {/* All-time summary */}
-          <Block className="alltime-block">
-            <div className="alltime-header">
-              <span className="alltime-icon">🍔</span>
-              <span className="alltime-title">All Time</span>
-            </div>
-            <div className="alltime-grid">
-              <div className="alltime-stat">
-                <span className="alltime-value">{data.allTime.count}</span>
-                <span className="alltime-label">Orders</span>
-              </div>
-              <div className="alltime-stat">
-                <span className="alltime-value">{formatSGD(data.allTime.totalPaid)}</span>
-                <span className="alltime-label">Total Spent</span>
-              </div>
-              <div className="alltime-stat">
-                <span className="alltime-value">{formatSGD(data.allTime.foodCost)}</span>
-                <span className="alltime-label">Food Cost</span>
-              </div>
-              <div className="alltime-stat">
-                <span className="alltime-value">{formatSGD(data.allTime.netDelivery)}</span>
-                <span className="alltime-label">Delivery Fees</span>
-              </div>
-            </div>
-          </Block>
-
-          {/* Year cards */}
-          {years.map((yr) => (
-            <YearSection key={yr} year={yr} data={data.years[yr]} />
-          ))}
-
-          <div className="page-footer">
-            Data from your foodpanda receipts. Updated daily at 2 AM.
+      <div className="pc">
+        {/* All-time summary */}
+        <div className="atc">
+          <div className="ath"><span className="ati">🍔</span><span className="att">All Time</span></div>
+          <div className="atg">
+            <div className="ats"><span className="atv">{data.allTime.count}</span><span className="atl">Orders</span></div>
+            <div className="ats"><span className="atv">{formatSGD(data.allTime.totalPaid)}</span><span className="atl">Total Spent</span></div>
+            <div className="ats"><span className="atv">{formatSGD(data.allTime.foodCost)}</span><span className="atl">Food Cost</span></div>
+            <div className="ats"><span className="atv">{formatSGD(data.allTime.netDelivery)}</span><span className="atl">Delivery Fees</span></div>
           </div>
-        </motion.div>
-      )}
+        </div>
+
+        {years.map((yr) => <YearSection key={yr} year={yr} data={data.years[yr]} />)}
+
+        <div className="pf">Data from your foodpanda receipts. Updated daily.</div>
+      </div>
     </Page>
   );
 }
 
-// ─── Stores page ────────────────────────────────────────────────────────
+// ─── Stores page ──────────────────────────────────────────────────────
 
 function StoresPage({ data, loading }) {
   if (loading || !data) return null;
 
-  // Build an all-time store ranking from all years
   const allStores = {};
   for (const yr of Object.values(data.years)) {
     for (const s of yr.stores) {
-      if (!allStores[s.name]) {
-        allStores[s.name] = { name: s.name, count: 0, totalPaid: 0 };
-      }
+      if (s.name === "Unknown") continue;
+      if (!allStores[s.name]) allStores[s.name] = { name: s.name, count: 0, totalPaid: 0 };
       allStores[s.name].count += s.count;
       allStores[s.name].totalPaid += s.totalPaid;
     }
   }
 
-  const sorted = Object.values(allStores)
-    .sort((a, b) => b.count - a.count);
-
+  const sorted = Object.values(allStores).sort((a, b) => b.count - a.count);
   const [expandedStore, setExpandedStore] = useState(null);
 
   return (
     <Page name="stores">
       <Navbar title="All Stores" />
-      <motion.div className="page-content" {...pageEnter}>
-        <Block className="stores-count-block">
-          <span className="stores-total">{sorted.length} stores ordered from</span>
-        </Block>
+      <div className="pc">
+        <div className="stc">{sorted.length} stores ordered from</div>
 
-        {sorted.map((store, si) => {
-          const yrStore = data.years["2026"]?.stores?.find(s => s.name === store.name);
-          return (
-            <motion.div key={store.name} {...staggerItem(si)}>
-              <div
-                className={`store-card ${expandedStore === si ? "expanded" : ""}`}
-                onClick={() => setExpandedStore(expandedStore === si ? null : si)}
-              >
-                <div className="store-header">
-                  <span className="store-rank">#{si + 1}</span>
-                  <span className="store-name">{store.name}</span>
-                  <span className="store-count">{store.count}</span>
-                  <span className="store-arrow">{expandedStore === si ? "▲" : "▼"}</span>
-                </div>
-
-                <AnimatePresence>
-                  {expandedStore === si && (
-                    <motion.div
-                      className="store-detail"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                    >
-                      <div className="store-summary-row">
-                        <span>Total Paid</span>
-                        <span className="value green">{formatSGD(store.totalPaid)}</span>
-                      </div>
-                      <div className="store-summary-row">
-                        <span>Orders</span>
-                        <span className="value">{store.count}</span>
-                      </div>
-
-                      {yrStore?.items?.length > 0 && (
-                        <>
-                          <div className="items-label">Top Items</div>
-                          {yrStore.items.map((item, ii) => (
-                            <div key={ii} className="item-row">
-                              <span className="item-name">{item.name}</span>
-                              <span className="item-qty">{item.qty}</span>
-                            </div>
-                          ))}
-                        </>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+        {sorted.map((store, si) => (
+          <div key={store.name} className="scard" onClick={() => setExpandedStore(expandedStore === si ? null : si)}>
+            <div className="sh">
+              <span className="sr">#{si + 1}</span>
+              <span className="sn">{store.name}</span>
+              <span className="sco">{store.count}</span>
+              <span className="sa">{expandedStore === si ? "▲" : "▼"}</span>
+            </div>
+            {expandedStore === si && (
+              <div className="sd">
+                <div className="ssr"><span>Total Paid</span><span className="green">{formatSGD(store.totalPaid)}</span></div>
+                <div className="ssr"><span>Orders</span><span>{store.count}</span></div>
               </div>
-            </motion.div>
-          );
-        })}
-      </motion.div>
+            )}
+          </div>
+        ))}
+      </div>
     </Page>
   );
 }
 
-// ─── Root App ────────────────────────────────────────────────────────────
+// ─── Root App ──────────────────────────────────────────────────────────
 
 export default function App() {
   const [data, setData] = useState(null);
@@ -317,22 +198,17 @@ export default function App() {
   const location = useLocation();
 
   useEffect(() => {
-    loadData().then((d) => {
-      setData(d);
-      setLoading(false);
-    });
+    loadData().then((d) => { setData(d); setLoading(false); });
   }, []);
 
   return (
     <F7App {...f7params}>
       <View main iosDynamicNavbar={false}>
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname}>
-            <Route path="/" element={<DashboardPage data={data} loading={loading} />} />
-            <Route path="/stores" element={<StoresPage data={data} loading={loading} />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AnimatePresence>
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<DashboardPage data={data} loading={loading} />} />
+          <Route path="/stores" element={<StoresPage data={data} loading={loading} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
 
         <Toolbar tabbar labels bottom>
           <Link tabLink active routeTabId="dashboard" href="#/">
