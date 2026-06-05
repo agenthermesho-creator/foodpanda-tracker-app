@@ -60,6 +60,7 @@ function StatCard({ label, value, color, delay }) {
 
 function YearSection({ year, data, isOpen }) {
   const [expandedStore, setExpandedStore] = useState(null);
+  const hasData = data.totalPaid > 0 || data.foodCost > 0;
 
   return (
     <motion.div
@@ -69,73 +70,95 @@ function YearSection({ year, data, isOpen }) {
       transition={{ duration: 0.5, ease: "easeOut" }}
     >
       {/* Year header */}
-      <div className="year-header" onClick={() => {}}>
+      <div className="year-header">
         <div className="year-header-left">
           <span className="year-label">{year}</span>
           <span className="year-badge">{data.count} order{data.count !== 1 ? "s" : ""}</span>
         </div>
       </div>
 
-      {/* Summary grid */}
-      <div className="year-content">
-        <div className="summary-grid">
-          <StatCard label="Total Paid" value={formatSGD(data.totalPaid)} color="#007aff" delay={0} />
-          <StatCard label="Food Cost" value={formatSGD(data.foodCost)} color="#8B5CF6" delay={1} />
-          <StatCard label="Delivery (net)" value={formatSGD(data.netDelivery)} color="#34C759" delay={2} />
-          <StatCard label="Platform Fees" value={formatSGD(data.platFee)} color="#FF9500" delay={3} />
+      {!hasData ? (
+        <div className="year-content">
+          <p className="empty-note">Order data recorded, but no financial details extracted for this period.</p>
+          {data.stores.length > 0 && (
+            <>
+              <div className="stores-label">Stores</div>
+              {data.stores.map((store, si) => (
+                <motion.div key={store.name} {...staggerItem(si)}>
+                  <div className="store-header" style={{ padding: "10px 14px", background: "var(--bg-subtle)", borderRadius: 12, marginBottom: 4 }}>
+                    <span className="store-rank">#{si + 1}</span>
+                    <span className="store-name">{store.name === "Unknown" ? "Unrecorded" : store.name}</span>
+                    <span className="store-count">{store.count}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </>
+          )}
         </div>
+      ) : (
+        <div className="year-content">
+          <div className="summary-grid">
+            <StatCard label="Total Paid" value={formatSGD(data.totalPaid)} color="#007aff" delay={0} />
+            <StatCard label="Food Cost" value={formatSGD(data.foodCost)} color="#8B5CF6" delay={1} />
+            <StatCard label="Delivery (net)" value={formatSGD(data.netDelivery)} color="#34C759" delay={2} />
+            <StatCard label="Platform Fees" value={formatSGD(data.platFee)} color="#FF9500" delay={3} />
+          </div>
 
-        {/* Top stores */}
-        <div className="stores-label">Top Stores</div>
-        {data.stores.map((store, si) => (
-          <motion.div key={store.name} {...staggerItem(si + 4)}>
-            <div
-              className={`store-card ${expandedStore === si ? "expanded" : ""}`}
-              onClick={() => setExpandedStore(expandedStore === si ? null : si)}
-            >
-              <div className="store-header">
-                <span className="store-rank">#{si + 1}</span>
-                <span className="store-name">{store.name}</span>
-                <span className="store-count">{store.count}</span>
-                <span className="store-arrow">{expandedStore === si ? "▲" : "▼"}</span>
-              </div>
-
-              <AnimatePresence>
-                {expandedStore === si && (
-                  <motion.div
-                    className="store-detail"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25 }}
+          {data.stores.length > 0 && (
+            <>
+              <div className="stores-label">Top Stores</div>
+              {data.stores.filter(s => s.name !== "Unknown").slice(0, 10).map((store, si) => (
+                <motion.div key={store.name} {...staggerItem(si + 4)}>
+                  <div
+                    className={`store-card ${expandedStore === si ? "expanded" : ""}`}
+                    onClick={() => setExpandedStore(expandedStore === si ? null : si)}
                   >
-                    <div className="store-summary-row">
-                      <span>Total Paid</span>
-                      <span className="value green">{formatSGD(store.totalPaid)}</span>
-                    </div>
-                    <div className="store-summary-row">
-                      <span>Orders</span>
-                      <span className="value">{store.count}</span>
+                    <div className="store-header">
+                      <span className="store-rank">#{si + 1}</span>
+                      <span className="store-name">{store.name}</span>
+                      <span className="store-count">{store.count}</span>
+                      <span className="store-arrow">{expandedStore === si ? "▲" : "▼"}</span>
                     </div>
 
-                    {store.items && store.items.length > 0 && (
-                      <>
-                        <div className="items-label">Top Items</div>
-                        {store.items.map((item, ii) => (
-                          <div key={ii} className="item-row">
-                            <span className="item-name">{item.name}</span>
-                            <span className="item-qty">{item.qty}</span>
+                    <AnimatePresence>
+                      {expandedStore === si && (
+                        <motion.div
+                          className="store-detail"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                        >
+                          <div className="store-summary-row">
+                            <span>Total Paid</span>
+                            <span className="value green">{formatSGD(store.totalPaid)}</span>
                           </div>
-                        ))}
-                      </>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+                          <div className="store-summary-row">
+                            <span>Orders</span>
+                            <span className="value">{store.count}</span>
+                          </div>
+
+                          {store.items && store.items.length > 0 && (
+                            <>
+                              <div className="items-label">Top Items</div>
+                              {store.items.map((item, ii) => (
+                                <div key={ii} className="item-row">
+                                  <span className="item-name">{item.name}</span>
+                                  <span className="item-qty">{item.qty}</span>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
